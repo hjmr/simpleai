@@ -63,6 +63,7 @@ class InverseTransformSampler(object):
     def __init__(self, weights, objects):
         assert weights and objects and len(weights) == len(objects)
         self.objects = objects
+        self.weights = weights
         tot = float(sum(weights))
         if tot == 0:
             tot = len(weights)
@@ -80,6 +81,15 @@ class InverseTransformSampler(object):
         while i + 1 != len(self.probs) and target > self.probs[i]:
             i += 1
         return self.objects[i]
+    
+    def best(self):        
+        max_idx = 0
+        for idx, obj in enumerate(self.objects):
+            if self.weights[max_idx] < self.weights[idx]:
+                max_idx = idx
+
+        print(f"elite:{self.objects[max_idx].state}, fitness={self.weights[max_idx]}")
+        return self.objects[max_idx]
 
 
 def _generic_arg(iterable, function, better_function):

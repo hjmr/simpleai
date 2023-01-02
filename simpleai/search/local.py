@@ -215,7 +215,7 @@ def simulated_annealing(problem, schedule=_exp_schedule, iterations_limit=0, vie
                          viewer=viewer)
 
 
-def _create_genetic_expander(problem, mutation_chance):
+def _create_genetic_expander(problem, crossover_rate, mutation_chance):
     '''
     Creates an expander that expands the bests nodes of the population,
     crossing over them.
@@ -225,26 +225,41 @@ def _create_genetic_expander(problem, mutation_chance):
         sampler = InverseTransformSampler(fitness, fringe)
         new_generation = []
 
+        elitest_node = sampler.best()
+        new_generation.append(elitest_node)
+
         expanded_nodes = []
         expanded_neighbors = []
 
-        for _ in fringe:
-            node1 = sampler.sample()
-            node2 = sampler.sample()
-            child = problem.crossover(node1.state, node2.state)
-            action = 'crossover'
+        for _ in range(len(fringe)-1):
+            action = ''
+            did_crossover = False
+            if random.random() < crossover_rate:
+                node1 = sampler.sample()
+                node2 = sampler.sample()
+                child = problem.crossover(node1.state, node2.state)
+                action = 'crossover'
+                did_crossover = True
+            else:
+                selected = sampler.sample()
+                child = selected.state
+
             if random.random() < mutation_chance:
                 # Noooouuu! she is... he is... *IT* is a mutant!
                 child = problem.mutate(child)
-                action += '+mutation'
+                action = action + '+mutation' if 0 < len(action) else 'mutation'
 
             child_node = SearchNodeValueOrdered(state=child, problem=problem, action=action)
             new_generation.append(child_node)
 
-            expanded_nodes.append(node1)
-            expanded_neighbors.append([child_node])
-            expanded_nodes.append(node2)
-            expanded_neighbors.append([child_node])
+            if did_crossover:
+                expanded_nodes.append(node1)
+                expanded_neighbors.append([child_node])
+                expanded_nodes.append(node2)
+                expanded_neighbors.append([child_node])
+            else:
+                expanded_nodes.append(selected)
+                expanded_neighbors.append([child_node])
 
         if viewer:
             viewer.event('expanded', expanded_nodes, expanded_neighbors)
@@ -256,7 +271,7 @@ def _create_genetic_expander(problem, mutation_chance):
     return _expander
 
 
-def genetic(problem, population_size=100, mutation_chance=0.1,
+def genetic(problem, population_size=100, crossover_rate = 0.6, mutation_chance=0.1,
             iterations_limit=0, viewer=None):
     '''
     Genetic search.
@@ -271,7 +286,7 @@ def genetic(problem, population_size=100, mutation_chance=0.1,
     SearchProblem.mutate and SearchProblem.value.
     '''
     return _local_search(problem,
-                         _create_genetic_expander(problem, mutation_chance),
+                         _create_genetic_expander(problem, crossover_rate, mutation_chance),
                          iterations_limit=iterations_limit,
                          fringe_size=population_size,
                          random_initial_states=True,
